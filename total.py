@@ -5,15 +5,52 @@ from urllib import request
 import json
 import time
 import csv
+
+import configparser
+from cloudify_rest_client import CloudifyClient
+
 import pandas as pd
 from statsmodels.tsa.stattools import adfuller
 import statsmodels.tsa.stattools as st
 import numpy as np
 import pyflux as pf
 
+def parse_args(filename):
+    cf=configparser.ConfigParser()
+    cf.read(filename)
+
+    hostip=cf.get('host','ip')
+    return  hostip
+
+
+def get_DashboardId():
+    host=parse_args('/Users/wecash/PycharmProjects/datasort/setting.conf')  #读取配置文件
+    client=CloudifyClient(host)
+    blueprints=client.blueprints.list()
+    blueprints_list=[]
+    for blueprint in blueprints:
+        blueprints_list.append(blueprint.id)
+    return blueprints_list
+
+
 def urlhandle():
-    url='http://10.10.1.6/backend/grafana/series?dashboardId=nodecellar&q=select++mean(value)+from+%2Fnodecellar%5C..*%3F%5C.cpu_total_system%2F+where++time+%3E+now()+-+15m+++++group+by+time(10)++order+asc&time_precision=s'
+    base_url='http://10.10.1.6/backend/grafana/series?'
+    dicts={
+        'dashboardId' :get_DashboardId()[0],
+        'q':'select++mean(value)+from+%2Fnodecellar%5C..*%3F%5C.cpu_total_system%2F+where++time+%3E+now()+-+15m+++++group+by+time(10)++order+asc',
+        'time_precision':'s'
+
+    }
+    item=dicts.items()
+    url_joint=''
+    for i in item:
+        (key,value)=i
+        temp_st=key+'='+value
+        url_joint=url_joint+temp_st+'&'
+    url_joint = url_joint[:len(url_joint) - 1]
+    url=base_url+url_joint
     return url
+
 
 def getdata():
     url=urlhandle()
